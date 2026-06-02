@@ -1,149 +1,78 @@
-╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                                                                                                              ║
-║                                      CH512 - CRASHHYBRID CIPHER                                              ║
-║                                  512-bit Block Cipher with GCM Authentication                               ║
-║                                              Version 2.0                                                     ║
-║                                                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+CH512 - CrashHybrid Cipher
+512-bit Block Cipher with GCM Authentication - Version 2.0
 
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              WHAT IS CH512?                                                   │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+What is CH512?
 
-CH512 is a symmetric block cipher built from the ground up for situations where data protection means survival. 
-It combines a massive 512-bit key space with 32 rounds of cryptographic transformation and GCM authenticated 
-encryption. The cipher uses proven components (AES S-Box, PBKDF2, GHASH) in a unique 512-bit architecture.
+CH512 is a symmetric block cipher built for situations where data protection means survival. It combines a 512-bit key space with 32 rounds of cryptographic transformation and GCM authenticated encryption. The cipher uses proven components (AES S-Box, PBKDF2, GHASH) in a unique 512-bit architecture.
 
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                           TECHNICAL SPECIFICATIONS                                            │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Technical Specifications
 
-┌──────────────────────┬──────────────────────────────────────────────────────────────────────────────────────┐
-│ Parameter            │ Value                                                                                │
-├──────────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-│ Block size           │ 128 bits (16 bytes)                                                                 │
-│ Key size             │ 512 bits (64 bytes)                                                                 │
-│ Number of rounds     │ 32                                                                                   │
-│ S-Box                │ AES S-Box (256-byte lookup)                                                          │
-│ ShiftRows            │ Row 0:0, Row 1:1, Row 2:2, Row 3:3                                                   │
-│ MixColumns           │ GF(2^8) polynomial 0x1B                                                              │
-│ GCM authentication   │ 128-bit GHASH tag                                                                    │
-│ Key derivation       │ PBKDF2-HMAC-SHA256, 600,000 iterations                                               │
-│ Salt size            │ 16 bytes                                                                            │
-│ IV size (GCM)        │ 12 bytes (96 bits)                                                                  │
-│ Side-channel         │ Constant-time multiplication                                                         │
-└──────────────────────┴──────────────────────────────────────────────────────────────────────────────────────┘
+Parameter                | Value
+-------------------------|------------------------------------------
+Block size               | 128 bits (16 bytes)
+Key size                 | 512 bits (64 bytes)
+Number of rounds         | 32
+S-Box                    | AES S-Box (256-byte lookup)
+ShiftRows                | Row 0:0, Row 1:1, Row 2:2, Row 3:3
+MixColumns               | GF(2^8) polynomial 0x1B
+GCM authentication       | 128-bit GHASH tag
+Key derivation           | PBKDF2-HMAC-SHA256, 600,000 iterations
+Salt size                | 16 bytes
+IV size (GCM)            | 12 bytes (96 bits)
+Side-channel             | Constant-time multiplication
 
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              PROJECT STRUCTURE                                                │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-
-ch512/
-│
-├── include/
-│   └── ch512.h                      # Main header with all declarations
-│
-├── src/
-│   ├── ch512_core.c                 # Round functions, S-Box, encrypt/decrypt
-│   ├── ch512_key.c                  # 512-bit key schedule with round constants
-│   ├── ch512_mode.c                 # CBC and CTR operation modes
-│   ├── ch512_utils.c                # Padding, zeroize, helper functions
-│   ├── ch512_kdf.c                  # PBKDF2-HMAC-SHA256 implementation
-│   └── ch512_gcm.c                  # GHASH and GCM authenticated encryption
-│
-├── tools/
-│   ├── ch512_encrypt_file.c         # Command line encryption tool
-│   ├── ch512_decrypt_file.c         # Command line decryption tool
-│   └── ch512_benchmark.c            # Performance benchmark utility
-│
-├── test/
-│   ├── ch512_test.c                 # Unit tests for all modes
-│   └── ch512_nist_test.c            # NIST SP 800-22 statistical tests
-│
-├── ch512/                           # Python package
-│   ├── __init__.py                  # Package exports
-│   ├── core.py                      # Python bindings to C library
-│   └── bin/                         # Compiled binaries for Python
-│
-├── docs/
-│   ├── SPECIFICATION.md             # Full algorithm specification
-│   └── IMPLEMENTATION.md            # Implementation notes and security analysis
-│
-├── Makefile                         # Build configuration
-├── README.md                        # Main documentation
-└── LICENSE                          # MIT License
-
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              INSTALLATION                                                     │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Installation
 
 Linux / macOS:
-
-    $ git clone https://github.com/Underscore0000/ch512.git
-    $ cd ch512
-    $ make
-    $ sudo cp bin/* /usr/local/bin/
+    git clone https://github.com/username/ch512.git
+    cd ch512
+    make
+    sudo cp bin/* /usr/local/bin/
 
 Windows (MSYS2/MinGW):
+    git clone https://github.com/username/ch512.git
+    cd ch512
+    mingw32-make
 
-    $ git clone https://github.com/Underscore0000/ch512.git
-    $ cd ch512
-    $ mingw32-make
+Python package:
+    cd ch512_package
+    pip install .
 
-Python package (local):
-
-    $ cd ch512_package
-    $ pip install .
-
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              COMMAND LINE USAGE                                              │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Command Line Usage
 
 Encrypt a file:
-
-    $ ./bin/ch512_enc document.txt document.enc "your_password_here"
+    ./bin/ch512_enc document.txt document.enc "your_password"
 
 Decrypt a file:
+    ./bin/ch512_dec document.enc document.dec "your_password"
 
-    $ ./bin/ch512_dec document.enc document.dec "your_password_here"
+Benchmark:
+    ./bin/ch512_bench
 
-Benchmark performance:
+Run tests:
+    ./bin/ch512_test
+    ./bin/ch512_nist
 
-    $ ./bin/ch512_bench
-
-Run statistical tests:
-
-    $ ./bin/ch512_nist
-
-Run unit tests:
-
-    $ ./bin/ch512_test
-
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              PYTHON API USAGE                                                 │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Python API Usage
 
     from ch512 import CH512
     
     cipher = CH512()
-    password = "my_secure_password_2024"
+    password = "my_secure_password"
     
-    # Encrypt a string
-    ciphertext = cipher.encrypt("Secret message for the shelter", password)
+    # Encrypt string
+    ciphertext = cipher.encrypt("Secret message", password)
     
-    # Decrypt a string
+    # Decrypt string
     plaintext = cipher.decrypt(ciphertext, password)
-    print(plaintext.decode())
     
-    # Encrypt a file
+    # Encrypt file
     cipher.encrypt_file("data.pdf", "data.pdf.enc", password)
     
-    # Decrypt a file
+    # Decrypt file
     cipher.decrypt_file("data.pdf.enc", "data.pdf.dec", password)
 
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              C API USAGE                                                      │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+C API Usage
 
     #include "ch512.h"
     
@@ -157,131 +86,74 @@ Run unit tests:
     ch512_encrypt_block(&ctx, plain, cipher);
     ch512_decrypt_block(&ctx, cipher, decrypted);
 
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              FILE FORMAT                                                      │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+File Format
 
-Encrypted files have this exact structure:
+Encrypted file structure:
+    [Salt 16 bytes] [IV 12 bytes] [Tag 16 bytes] [Ciphertext]
+    
+Total overhead: 44 bytes
 
-    ┌────────────┬────────────┬────────────┬─────────────────────┐
-    │  Salt(16)  │   IV(12)   │  Tag(16)   │    Ciphertext       │
-    └────────────┴────────────┴────────────┴─────────────────────┘
-         │            │            │              │
-         │            │            │              └── Encrypted data
-         │            │            └── GCM authentication tag
-         │            └── Initialization vector (GCM nonce)
-         └── PBKDF2 salt for key derivation
+Performance Benchmarks
 
-Total overhead: 44 bytes (16+12+16)
+Platform                    | Throughput (MB/s) | Key Setup (us)
+----------------------------|-------------------|---------------
+Intel i7-12700H @3.5GHz     | 352               | 8.2
+AMD Ryzen 7 5800X           | 378               | 7.9
+Intel i5-8250U              | 189               | 12.4
+Raspberry Pi 4              | 47                | 28.6
+Apple M1                    | 291               | 9.4
 
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                         PERFORMANCE BENCHMARKS                                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-
-    ┌────────────────────────┬────────────────────────┬────────────────────────┐
-    │ Platform               │ Throughput (MB/s)      │ Key Setup (μs)         │
-    ├────────────────────────┼────────────────────────┼────────────────────────┤
-    │ Intel i7-12700H @3.5GHz│ 352                    │ 8.2                    │
-    │ AMD Ryzen 7 5800X      │ 378                    │ 7.9                    │
-    │ Intel i5-8250U         │ 189                    │ 12.4                   │
-    │ Raspberry Pi 4         │ 47                     │ 28.6                   │
-    │ Apple M1               │ 291                    │ 9.4                    │
-    └────────────────────────┴────────────────────────┴────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                           SECURITY CLAIMS                                                    │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Security Claims
 
 Classical attacks:
-
-    ┌────────────────────────────┬────────────────────────────────────────────────┐
-    │ Attack type                │ Complexity                                     │
-    ├────────────────────────────┼────────────────────────────────────────────────┤
-    │ Brute force (key search)   │ 2^512 (infeasible)                            │
-    │ Differential cryptanalysis │ > 2^200 (resistant)                           │
-    │ Linear cryptanalysis       │ > 2^200 (resistant)                           │
-    │ Related-key attacks        │ > 2^256 (resistant)                           │
-    └────────────────────────────┴────────────────────────────────────────────────┘
+    Brute force (key search)   : 2^512 (infeasible)
+    Differential cryptanalysis : > 2^200 (resistant)
+    Linear cryptanalysis       : > 2^200 (resistant)
+    Related-key attacks        : > 2^256 (resistant)
 
 Quantum attacks:
+    Grover's algorithm         : 2^256 operations (quantum-safe)
 
-    ┌────────────────────────────┬────────────────────────────────────────────────┐
-    │ Grover's algorithm         │ 2^256 operations (quantum-safe)               │
-    └────────────────────────────┴────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              TEST RESULTS                                                     │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Test Results
 
 Unit tests (ch512_test):
-
     [TEST 1] Encrypt/Decrypt ........... PASS
     [TEST 2] CBC Mode .................. PASS
     [TEST 3] CTR Mode .................. PASS
-    [TEST 4] Avalanche (1 bit in key) .. PASS (51.2% bits changed)
+    [TEST 4] Avalanche ................. PASS (51.2% bits changed)
 
 NIST statistical tests (ch512_nist):
-
-    [TEST 1] Frequency (Monobit) ....... PASS (p-value > 0.01)
-    [TEST 2] Chi-Square ................ PASS (chi2 < 293.25)
+    [TEST 1] Frequency (Monobit) ....... PASS
+    [TEST 2] Chi-Square ................ PASS
     [TEST 3] Shannon Entropy ........... EXCELLENT (7.999 bits/byte)
 
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              DEPENDENCIES                                                    │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Dependencies
 
-The cipher has ZERO external dependencies. Only the standard C library is required:
+The cipher has ZERO external dependencies. Only the standard C library:
+    - stdint.h
+    - string.h
+    - stddef.h
+    - stdlib.h (for tools)
+    - stdio.h (for tools)
 
-    - stdint.h      (integer types)
-    - string.h      (memory operations)
-    - stddef.h      (size_t type)
-    - stdlib.h      (for tools: malloc/free)
-    - stdio.h       (for tools: file I/O)
+No OpenSSL. No libgcrypt. Pure C.
 
-No OpenSSL. No libgcrypt. No external crypto libraries. Pure C.
+Disclaimer
 
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              DISCLAIMER                                                       │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+CH512 is NOT certified by NIST or any government agency. This software is provided for survival scenarios, educational purposes, and personal data protection. For government, military, or financial applications requiring certified cryptography, use AES-256-GCM via OpenSSL.
 
-CH512 is NOT certified by NIST or any government agency. This software is provided for survival scenarios,
-educational purposes, and personal data protection. For government, military, or financial applications
-requiring certified cryptography, use AES-256-GCM via OpenSSL (FIPS 140-2 validated).
-
-The authors assume no liability for data loss or security breaches resulting from use of this software.
-
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                              LICENSE                                                          │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+License
 
 MIT License
 
-Copyright (c) 2026
+Copyright (c) 2026 Survival Team
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                             VERSION HISTORY                                                   │
-└─────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+Version History
 
-    v1.0 (2026-06-02) - Initial release: 512-bit key, CBC/CTR modes, 32 rounds, GCM authentication, PBKDF2, constant-time, Python bindings
-
-═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
-                                CH512 - CrashHybrid Cipher - For Survival, By Survivors
-═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+v2.0 (2026-06-02) - Initial release: 512-bit key, CBC/CTR modes, 32 rounds, GCM authentication, PBKDF2, constant-time operations, Python bindings
