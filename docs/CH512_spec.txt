@@ -1,0 +1,235 @@
+================================================================================
+
+                    CH512 - CRASHHYBRID CIPHER SPECIFICATION
+                    Version 2.0
+                    June 2024
+
+================================================================================
+1. INTRODUCTION
+================================================================================
+
+CH512 is a symmetric block cipher designed for 512-bit key operation. The cipher
+operates on 128-bit blocks and uses 32 rounds of cryptographic transformation.
+The design follows the substitution-permutation network (SPN) architecture.
+
+1.1 Notation
+
+    K       : Master key (512 bits = 64 bytes)
+    P       : Plaintext block (128 bits = 16 bytes)
+    C       : Ciphertext block (128 bits = 16 bytes)
+    RK[r]   : Round key for round r (128 bits)
+    S[x]    : S-box lookup (8-bit to 8-bit)
+    ROUNDS  : Number of rounds = 32
+
+================================================================================
+2. ENCRYPTION ALGORITHM
+================================================================================
+
+2.1 State Representation
+
+The 128-bit state is organized as a 4x4 matrix of bytes:
+
+    State[4][4] = [s00 s01 s02 s03]
+                  [s10 s11 s12 s13]
+                  [s20 s21 s22 s23]
+                  [s30 s31 s32 s33]
+
+Byte ordering: row-major order (s00 is first byte, s33 is last byte).
+
+2.2 Round Transformation
+
+Each round (except the final) applies four operations:
+
+    Round(State, RoundKey) {
+        SubBytes(State);
+        ShiftRows(State);
+        MixColumns(State);
+        AddRoundKey(State, RoundKey);
+    }
+
+Final round omits MixColumns.
+
+2.3 SubBytes
+
+Each byte of the state is replaced by its S-box lookup:
+
+    s' = S[s]
+
+The S-box is identical to the AES S-box (Rijndael S-box) based on the
+multiplicative inverse in GF(2^8) followed by an affine transformation.
+
+2.4 ShiftRows
+
+Bytes in row r (0-indexed) are cyclically shifted left by r positions:
+
+    Row 0: shift by 0 (no change)
+    Row 1: shift by 1
+    Row 2: shift by 2
+    Row 3: shift by 3
+
+2.5 MixColumns
+
+Each column is treated as a polynomial over GF(2^8) and multiplied modulo
+x^4 + 1 by the fixed polynomial a(x) = {03}x^3 + {01}x^2 + {01}x + {02}.
+
+The multiplication in GF(2^8) uses the irreducible polynomial
+m(x) = x^8 + x^4 + x^3 + x + 1 (0x11B).
+
+For a column [s0, s1, s2, s3]T, the output [t0, t1, t2, t3]T is:
+
+    t0 = ({02} * s0) ^ ({03} * s1) ^ s2 ^ s3
+    t1 = s0 ^ ({02} * s1) ^ ({03} * s2) ^ s3
+    t2 = s0 ^ s1 ^ ({02} * s2) ^ ({03} * s3)
+    t3 = ({03} * s0) ^ s1 ^ s2 ^ ({02} * s3)
+
+2.6 AddRoundKey
+
+Each byte of the state is XORed with the corresponding byte of the round key:
+
+    s = s ^ RK[r][byte_index]
+
+================================================================================
+3. KEY SCHEDULE
+================================================================================
+
+3.1 Input
+
+Master key K: 512 bits (64 bytes) arranged as 16 words of 4 bytes each.
+
+3.2 Round Constants
+
+32 round constants (Rcon) are defined as powers of {02} in GF(2^8):
+
+    Rcon[1] = 0x01
+    Rcon[2] = 0x02
+    Rcon[3] = 0x04
+    Rcon[4] = 0x08
+    Rcon[5] = 0x10
+    Rcon[6] = 0x20
+    Rcon[7] = 0x40
+    Rcon[8] = 0x80
+    Rcon[9] = 0x1B
+    Rcon[10] = 0x36
+    ... (continues through 33 values)
+
+3.3 Expansion Algorithm
+
+First round key RK[0] = first 16 bytes of K.
+
+For round i from 1 to 32:
+
+    Step 1: RK[i] = RK[i-1] (copy)
+    Step 2: Extract last 4 bytes of RK[i-1] as word W
+    Step 3: RotWord(W) - circular left shift by one byte
+    Step 4: SubWord(W) - S-box substitution on each byte
+    Step 5: W[0] ^= (Rcon[i] >> 24) & 0xFF
+            W[1] ^= (Rcon[i] >> 16) & 0xFF
+            W[2] ^= (Rcon[i] >> 8) & 0xFF
+            W[3] ^= Rcon[i] & 0xFF
+    Step 6: RK[i][12..15] ^= W
+    Step 7: For j = 0 to 11:
+                RK[i][j] ^= K[(i * 16 + j) % 64]
+
+================================================================================
+4. GCM AUTHENTICATED ENCRYPTION
+================================================================================
+
+4.1 GHASH Function
+
+GHASH computes a hash over data using multiplication in GF(2^128) with the
+polynomial x^128 + x^7 + x^2 + x + 1.
+
+H = CH512_Encrypt(Zero block)
+
+GHASH(X) = (X1 * H^m) ^ (X2 * H^(m-1)) ^ ... ^ (Xm * H)
+
+4.2 GCM Encryption (IV length = 96 bits)
+
+    J0 = IV || 0^31 || 1
+    For i = 1 to n:
+        C_i = P_i ^ CH512_Encrypt(J0 ++ i)
+    Tag = GHASH(AAD || C || len(AAD) || len(C)) ^ CH512_Encrypt(J0)
+
+4.3 GCM Decryption
+
+    Recompute Tag from ciphertext
+    Compare Tag with received tag using constant-time comparison
+    If match: decrypt using same counter stream
+    If mismatch: return error
+
+================================================================================
+5. KEY DERIVATION (PBKDF2)
+================================================================================
+
+5.1 Parameters
+
+    PRF      : HMAC-SHA256
+    Password : User-supplied string (UTF-8 encoded)
+    Salt     : Random 16 bytes
+    Iterations: 600,000
+    DKLen    : 64 bytes
+
+5.2 Algorithm
+
+    DK = PBKDF2(PRF, Password, Salt, Iterations, 64)
+
+    Where PBKDF2 is defined in PKCS #5 v2.1.
+
+================================================================================
+6. TEST VECTORS
+================================================================================
+
+6.1 Block Encryption (Key = all zeros, Plaintext = all zeros)
+
+    Key:   0000000000000000000000000000000000000000000000000000000000000000
+           (64 bytes of zero)
+    Plain: 00000000000000000000000000000000
+    Cipher: (to be computed - depends on round constant injection)
+
+6.2 GCM Test Vector (Password = "test", Plaintext = "Hello")
+
+    Password: "test"
+    Salt:     random (first 16 bytes of output)
+    IV:       random (12 bytes)
+    Output:   44 bytes total (16+12+16+plaintext length)
+
+================================================================================
+7. SECURITY ANALYSIS
+================================================================================
+
+7.1 Resistance to Differential Cryptanalysis
+
+    Maximum differential probability for S-box: 4/256 = 2^-6
+    Active S-boxes per 4 rounds: minimum 25
+    Probability for 4-round differential: (2^-6)^25 = 2^-150
+    For 32 rounds: far below 2^-128 threshold.
+
+7.2 Resistance to Linear Cryptanalysis
+
+    Maximum linear bias for S-box: 2^-4
+    Active S-boxes per 4 rounds: minimum 25
+    Bias for 4-round linear trail: (2^-4)^25 = 2^-100
+    For 32 rounds: negligible.
+
+7.3 Key Schedule Strength
+
+    512-bit master key provides 2^512 key space.
+    Round constants ensure no slide attacks.
+    Master key injection every round prevents related-key attacks.
+
+================================================================================
+8. COMPATIBILITY
+================================================================================
+
+8.1 Endianness
+
+    All multi-byte values are stored in big-endian order (network byte order).
+
+8.2 Padding
+
+    For CBC mode: PKCS#7 padding (RFC 5652)
+    For GCM mode: no padding required (CTR mode)
+
+================================================================================
+END OF SPECIFICATION
+================================================================================

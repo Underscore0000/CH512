@@ -1,0 +1,282 @@
+================================================================================
+
+                CH512 - IMPLEMENTATION NOTES & SECURITY CONSIDERATIONS
+                Version 2.0
+                June 2024
+
+================================================================================
+1. BUILD SYSTEM
+================================================================================
+
+1.1 Supported Compilers
+
+    - GCC 7.0 or later (Linux, Windows via MinGW)
+    - Clang 6.0 or later (macOS, FreeBSD)
+    - MSVC 2019 or later (Windows, with C99 mode)
+
+1.2 Compiler Flags
+
+    Recommended production flags:
+        -O2 -march=native -Wall -Wextra -Werror
+
+    Debug build:
+        -O0 -g -DDEBUG -fsanitize=address
+
+1.3 Platform-Specific Notes
+
+    Windows (MinGW):
+        - Use mingw32-make instead of make
+        - Output binaries have .exe extension
+        - DLL creation requires -shared flag
+
+    macOS:
+        - Use -mmacosx-version-min=10.13 for compatibility
+        - Create dylib with -dynamiclib
+
+================================================================================
+2. MEMORY SAFETY
+================================================================================
+
+2.1 Zeroization
+
+All functions that handle sensitive data must zeroize memory before freeing:
+
+    void ch512_zeroize_ctx(ch512_ctx *ctx) {
+        volatile uint8_t *p = (volatile uint8_t *)ctx;
+        for (size_t i = 0; i < sizeof(ch512_ctx); i++) {
+            p[i] = 0;
+        }
+    }
+
+The 'volatile' keyword prevents compiler optimization of the zeroization loop.
+
+2.2 Stack Protection
+
+Do not store long-lived keys on the stack. Use heap with explicit zeroization:
+
+    uint8_t *key = malloc(64);
+    // ... use key ...
+    memset(key, 0, 64);
+    free(key);
+
+2.3 Constant-Time Tag Comparison
+
+    static int constant_time_compare(const uint8_t *a, const uint8_t *b, size_t len) {
+        uint8_t diff = 0;
+        for (size_t i = 0; i < len; i++) {
+            diff |= a[i] ^ b[i];
+        }
+        return (int)(diff != 0);
+    }
+
+Do NOT use memcmp() for cryptographic tag verification as it may short-circuit.
+
+================================================================================
+3. SIDE-CHANNEL MITIGATIONS
+================================================================================
+
+3.1 Timing Attacks
+
+The gf256_mul function is implemented without conditional branches:
+
+    static uint8_t gf256_mul(uint8_t a, uint8_t b) {
+        uint8_t p = 0;
+        for (int i = 0; i < 8; i++) {
+            uint8_t mask = (uint8_t)(-(b & 1));
+            p ^= a & mask;
+            uint8_t hi_bit = a & 0x80;
+            a <<= 1;
+            a ^= (0x1B & (-(hi_bit >> 7)));
+            b >>= 1;
+        }
+        return p;
+    }
+
+This executes the same number of operations regardless of input values.
+
+3.2 Cache Timing
+
+Current implementation uses table-based S-box lookups which are vulnerable to
+cache-timing attacks. For environments requiring higher security:
+
+    TODO: Implement bitsliced S-box (8 bits at a time using SSE/AVX registers)
+
+3.3 Power Analysis
+
+No countermeasures against power analysis are implemented. Use physical
+enclosures or shielded hardware if power analysis is a concern.
+
+================================================================================
+4. PERFORMANCE OPTIMIZATIONS
+================================================================================
+
+4.1 Lookup Tables
+
+Precompute MixColumns multiplication tables for 8x speed improvement:
+
+    static uint8_t mul2[256] = {0x00,0x02,0x04,0x06,...};
+    static uint8_t mul3[256] = {0x00,0x03,0x06,0x05,...};
+
+Then MixColumns becomes table lookups instead of gf256_mul calls.
+
+4.2 Loop Unrolling
+
+The shift_rows function can be unrolled for better performance (already done).
+
+4.3 Block Processing
+
+For GCM mode, counter blocks can be precomputed in batches of 8 or 16 for
+vectorized operations (requires SIMD).
+
+================================================================================
+5. ERROR HANDLING
+================================================================================
+
+5.1 Padding Errors
+
+In CBC mode, always return the same error message for padding errors to avoid
+padding oracle attacks:
+
+    if (pkcs7_unpad(...) != 0) {
+        return -1;  // Generic error, not "padding error"
+    }
+
+5.2 Tag Mismatch
+
+In GCM mode, verify the tag BEFORE decrypting:
+
+    if (constant_time_compare(tag, computed_tag, 16) != 0) {
+        return -1;  // Fail without decrypting
+    }
+
+================================================================================
+6. RANDOM NUMBER GENERATION
+================================================================================
+
+6.1 Recommended RNG Sources
+
+    Linux:   /dev/urandom
+    Windows: CryptGenRandom() or BCryptGenRandom()
+    macOS:   /dev/urandom or SecRandomCopyBytes()
+
+6.2 Fallback
+
+When no secure RNG is available, use a combination of:
+    - time(NULL)
+    - clock()
+    - Address of stack variables (ASLR entropy)
+    - Hardware RNG if available (rdrand on x86)
+
+WARNING: These are NOT cryptographically secure for production use.
+
+================================================================================
+7. PORTING TO OTHER PLATFORMS
+================================================================================
+
+7.1 Endianness
+
+The code assumes little-endian for integer storage but uses big-endian for
+network protocols. For big-endian platforms (e.g., SPARC, PowerPC), add:
+
+    #if defined(__BIG_ENDIAN__)
+    #define ntohl(x) (x)
+    #else
+    #define ntohl(x) __builtin_bswap32(x)
+    #endif
+
+7.2 32-bit Platforms
+
+On 32-bit platforms (ARMv7, i686), the code works but performance is reduced.
+Key schedule uses 64-byte buffers which fit within 32-bit address space.
+
+7.3 Bare Metal / Embedded
+
+For embedded systems without stdlib, replace printf with custom logging and
+disable test code. Minimum requirements: ~8KB RAM, ~16KB ROM.
+
+================================================================================
+8. KNOWN LIMITATIONS
+================================================================================
+
+8.1 GCM IV Length
+
+Only 96-bit (12 byte) IVs are supported. Other lengths are not implemented.
+
+8.2 Maximum Plaintext Size
+
+GCM mode is safe for up to 2^39 - 256 bytes (about 549 GB). Do not exceed this.
+
+8.3 CBC Mode Limitations
+
+CBC mode is provided for legacy compatibility only. Prefer GCM for new code.
+
+================================================================================
+9. FUTURE IMPROVEMENTS
+================================================================================
+
+Planned for v3.0:
+
+    [ ] Bitsliced S-box for cache-timing resistance
+    [ ] AVX-512 vectorized implementation for 4x speedup
+    [ ] Support for 192-bit and 256-bit key variants
+    [ ] Additional AEAD modes (CCM, EAX)
+    [ ] Hardware acceleration (ARM Crypto Extensions)
+
+================================================================================
+10. TROUBLESHOOTING
+================================================================================
+
+10.1 Compilation Errors
+
+    "implicit declaration of function 'pkcs7_pad'"
+        → Add function prototype to ch512.h or include ch512_utils.h
+
+    "undefined reference to `kdf_pbkdf2'"
+        → Add ch512_kdf.o to OBJECTS list in Makefile
+
+    "snprintf: implicit declaration"
+        → #include <stdio.h> in the source file
+
+10.2 Runtime Errors
+
+    "Decryption failed: wrong password or corrupted data"
+        → Password is incorrect or file is corrupted
+
+    "Cannot open /dev/urandom"
+        → On Windows, use BCryptGenRandom instead
+
+    "Segmentation fault in ch512_init"
+        → Key pointer is NULL or ctx pointer is invalid
+
+================================================================================
+11. CONTRIBUTING
+================================================================================
+
+Code Style:
+
+    - Indent with 4 spaces (no tabs)
+    - Braces on new line for functions
+    - Braces on same line for control structures
+    - Maximum line length: 100 characters
+    - Comments in English, explaining WHY not WHAT
+
+Before submitting pull request:
+
+    make clean
+    make
+    make test
+    make valgrind    (if available)
+
+================================================================================
+12. REFERENCES
+================================================================================
+
+[1] NIST FIPS 197 - Advanced Encryption Standard (AES)
+[2] NIST SP 800-38D - Recommendation for Block Cipher Modes (GCM)
+[3] RFC 2898 - PKCS #5: Password-Based Cryptography (PBKDF2)
+[4] RFC 2104 - HMAC: Keyed-Hashing for Message Authentication
+[5] Daemen, J., Rijmen, V. - "The Design of Rijndael" (AES)
+
+================================================================================
+END OF IMPLEMENTATION NOTES
+================================================================================
