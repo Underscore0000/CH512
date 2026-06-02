@@ -1,5 +1,3 @@
-/* FILE: src/ch512_gcm.c - COMPLETO CON CONSTANT-TIME TAG COMPARE */
-
 #include "../include/ch512.h"
 #include <string.h>
 #include <stdlib.h>
