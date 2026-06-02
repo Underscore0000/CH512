@@ -24,13 +24,13 @@ Side-channel             | Constant-time multiplication
 Installation
 
 Linux / macOS:
-    git clone https://github.com/username/ch512.git
+    git clone https://github.com/Underscore0000/CH512.git
     cd ch512
     make
     sudo cp bin/* /usr/local/bin/
 
 Windows (MSYS2/MinGW):
-    git clone https://github.com/username/ch512.git
+    git clone https://github.com/Underscore0000/CH512.git
     cd ch512
     mingw32-make
 
